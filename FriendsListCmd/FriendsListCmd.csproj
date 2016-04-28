@@ -49,6 +49,7 @@
     <Compile Include="api\Stats.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="util\FameUtil.cs" />
     <Compile Include="util\StringUtil.cs" />
   </ItemGroup>
   <ItemGroup>

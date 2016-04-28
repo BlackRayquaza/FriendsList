@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
+using FriendsListCmd.util;
 
 namespace FriendsListCmd.api
 {
@@ -10,6 +11,7 @@ namespace FriendsListCmd.api
         public int BestCharFame { get; set; }
         public int TotalFame { get; set; }
         public int Fame { get; set; }
+        public int Stars { get; set; }
 
         public Stats(XElement elem)
         {
@@ -18,6 +20,7 @@ namespace FriendsListCmd.api
             BestCharFame = int.Parse(elem.Element("BestCharFame").Value);
             TotalFame = int.Parse(elem.Element("TotalFame").Value);
             Fame = int.Parse(elem.Element("Fame").Value);
+            Stars = (from i in ClassStats from t in FameUtil.STARS.Where(t => i.BestFame >= t) select i).Count();
         }
     }
 }
