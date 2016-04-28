@@ -1,54 +1,49 @@
 ﻿using FriendsListCmd.api;
+using FriendsListCmd.util;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Xml.Linq;
 using System.Xml.XPath;
-using FriendsListCmd.util;
 
 namespace FriendsListCmd
 {
     internal class Program
     {
-        private static bool isValidAcc;
-        public static string CharList { get; set; }
+        public static XElement AccountVerify { get; set; }
         public static XElement FriendsList { get; set; }
 
         // ReSharper disable once UnusedParameter.Local
         private static void Main(string[] args)
         {
             Console.WriteLine("Write email");
+            Console.Write("> ");
             var email = Console.ReadLine();
             Console.WriteLine("Write password");
+            Console.Write("> ");
             var password = Console.ReadLine();
 
             var webClient = new WebClient();
-            CharList = webClient.DownloadString($"http://realmofthemadgodhrd.appspot.com/char/list?guid={email}&password={password}");
-
-            var text = new StringReader(CharList);
-            var xml = XElement.Load(text);
-
-            isValidAcc = xml.FirstAttribute.Value != "1";
-
-            if (!isValidAcc)
+            AccountVerify = XElement.Parse(webClient.DownloadString($"http://realmofthemadgodhrd.appspot.com/account/verify?guid={email}&password={password}"));
+            
+            if (AccountVerify.Elements("Error").Any())
             {
                 Console.WriteLine("Not a valid account");
+                Console.WriteLine("Press enter to exit");
                 Console.ReadLine();
                 return;
             }
 
-            text.Dispose();
-
             Console.WriteLine("Valid account");
-            Console.WriteLine("Press enter");
+            Console.WriteLine("Press enter to continue");
             Console.ReadLine();
             Console.Clear();
 
-            Console.WriteLine("Available commands: \"download\", \"stop\", \"data\"");
+            Console.WriteLine("Available commands: \"download\", \"data\", \"exit\"");
 
             var running = true;
             var hasParsed = false;
@@ -60,12 +55,20 @@ namespace FriendsListCmd
                 switch (Console.ReadLine())
                 {
                     case "download":
-                        Console.WriteLine("Downloading friends list");
-                        FriendsList = XElement.Parse(webClient.DownloadString($"http://realmofthemadgodhrd.appspot.com/friends/getList?guid={email}&password={password}"));
-                        Console.WriteLine("Done");
-                        Console.WriteLine("Parsing data");
+                        var sw = new Stopwatch();
+                        sw.Start();
+                        Console.Write("Downloading friends list...");
+                        FriendsList =
+                            XElement.Parse(
+                                webClient.DownloadString(
+                                    $"http://realmofthemadgodhrd.appspot.com/friends/getList?guid={email}&password={password}"));
+                        Console.WriteLine($" completed in {sw.ElapsedMilliseconds} ms");
+                        sw.Reset();
+                        sw.Start();
+                        Console.Write("Parsing data...");
                         Accounts.AddRange(FriendsList.XPathSelectElements("//Account").Select(_ => new Account(_)));
-                        Console.WriteLine("Done");
+                        Console.WriteLine($" completed in {sw.ElapsedMilliseconds} ms");
+                        sw.Stop();
                         hasParsed = true;
                         break;
 
@@ -114,8 +117,7 @@ namespace FriendsListCmd
                             Console.WriteLine(sb.ToString());
                         }
                         else
-                            Console.WriteLine(
-                                $"Least Experience: {StringUtil.FormatNumber(Accounts.OrderByDescending(_ => _.Character.Experience).Last().Character.Experience)} ({Accounts.OrderByDescending(_ => _.Character.Experience).Last().Name})");
+                            Console.WriteLine($"Least Experience: {StringUtil.FormatNumber(Accounts.OrderByDescending(_ => _.Character.Experience).Last().Character.Experience)} ({Accounts.OrderByDescending(_ => _.Character.Experience).Last().Name})");
                         Console.WriteLine($"Combined Experience: {StringUtil.FormatNumber(Accounts.Sum(_ => _.Character.Experience))}");
                         Console.WriteLine($"Average Experience: {StringUtil.FormatNumber((int)Accounts.Average(_ => _.Character.Experience))}");
                         Console.WriteLine($"Most Fame: {StringUtil.FormatNumber(Accounts.OrderByDescending(_ => _.Character.CurrentFame).First().Character.CurrentFame)} ({Accounts.OrderByDescending(_ => _.Character.CurrentFame).First().Name})");
@@ -146,8 +148,7 @@ namespace FriendsListCmd
                             Console.WriteLine(sb.ToString());
                         }
                         else
-                            Console.WriteLine(
-                                $"Least Fame: {StringUtil.FormatNumber(Accounts.OrderByDescending(_ => _.Character.CurrentFame).Last().Character.CurrentFame)} ({Accounts.OrderByDescending(_ => _.Character.CurrentFame).Last().Name})");
+                            Console.WriteLine($"Least Fame: {StringUtil.FormatNumber(Accounts.OrderByDescending(_ => _.Character.CurrentFame).Last().Character.CurrentFame)} ({Accounts.OrderByDescending(_ => _.Character.CurrentFame).Last().Name})");
                         Console.WriteLine($"Combined Fame: {StringUtil.FormatNumber(Accounts.Sum(_ => _.Character.CurrentFame))}");
                         Console.WriteLine($"Average Fame: {StringUtil.FormatNumber((int)Accounts.Average(_ => _.Character.CurrentFame))}");
                         break;
@@ -156,7 +157,7 @@ namespace FriendsListCmd
                         Console.WriteLine("Available commands: \"download\", \"stop\", \"data\"");
                         break;
 
-                    case "stop":
+                    case "exit":
                         running = false;
                         break;
                 }
